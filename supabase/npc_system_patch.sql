@@ -18,11 +18,18 @@ create table if not exists public.npc_profiles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.npc_wheel_rounds (
+  cycle_id bigint primary key,
+  spun_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 alter table public.npc_profiles add column if not exists last_global_chat_text text;
 alter table public.npc_profiles add column if not exists last_poker_chat_text text;
 alter table public.npc_profiles add column if not exists last_rr_chat_text text;
 
 create index if not exists npc_profiles_enabled_idx on public.npc_profiles (is_enabled, npc_tier);
+create index if not exists npc_wheel_rounds_created_idx on public.npc_wheel_rounds (created_at desc);
 
 create or replace function public.npc_set_updated_at()
 returns trigger
@@ -742,6 +749,119 @@ begin
 end;
 $$;
 
+create or replace function public.npc_tick_wheel()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  settings_record public.wheel_settings%rowtype;
+  npc record;
+  current_cycle bigint;
+  target_cycle bigint;
+  cycle_elapsed integer;
+  round_seconds integer := 70;
+  betting_seconds integer := 60;
+  target_count integer;
+  bet_amount integer;
+  available_points integer;
+  ratio numeric;
+  created_spin public.wheel_spins%rowtype;
+  placed_count integer := 0;
+begin
+  if to_regclass('public.wheel_settings') is null
+    or to_regclass('public.wheel_segments') is null
+    or to_regclass('public.wheel_spins') is null
+    or to_regclass('public.npc_wheel_rounds') is null
+    or to_regprocedure('public.wheel_create_spin_bot(text,integer,text)') is null then
+    return 0;
+  end if;
+
+  select *
+  into settings_record
+  from public.wheel_settings
+  where settings_id = 1;
+
+  if not found or not settings_record.enabled then
+    return 0;
+  end if;
+
+  current_cycle := floor(extract(epoch from now()) / round_seconds)::bigint;
+  cycle_elapsed := floor(extract(epoch from now()))::integer % round_seconds;
+  target_cycle := case when cycle_elapsed < betting_seconds then current_cycle - 1 else current_cycle end;
+  if target_cycle < 0 then
+    return 0;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('npc_tick_wheel_v1'));
+
+  insert into public.npc_wheel_rounds (cycle_id)
+  values (target_cycle)
+  on conflict (cycle_id) do nothing;
+
+  if not found then
+    return 0;
+  end if;
+
+  target_count := 8 + floor(random() * 17)::integer;
+
+  for npc in
+    select np.user_id, np.bot_session_token, np.npc_tier, u.points, u.locked_points
+    from public.npc_profiles np
+    join public.users u on u.uid = np.user_id
+    where np.is_enabled = true
+      and np.bot_session_token is not null
+      and u.is_banned = false
+    order by case when np.npc_tier = 'whale' then 0 else 1 end, random()
+    limit target_count
+  loop
+    available_points := greatest(0, npc.points - npc.locked_points);
+    if available_points < settings_record.min_bet then
+      continue;
+    end if;
+
+    if npc.npc_tier = 'whale' then
+      ratio := 0.03 + (random() * 0.06);
+    else
+      ratio := 0.008 + (random() * 0.02);
+    end if;
+
+    bet_amount := floor(available_points * ratio)::integer;
+    bet_amount := greatest(settings_record.min_bet, bet_amount);
+    bet_amount := least(settings_record.max_bet, bet_amount);
+
+    if bet_amount > available_points then
+      bet_amount := available_points;
+    end if;
+
+    if bet_amount < settings_record.min_bet then
+      continue;
+    end if;
+
+    begin
+      created_spin := public.wheel_create_spin_bot(
+        npc.bot_session_token,
+        bet_amount,
+        format('npc-wheel-%s-%s', target_cycle::text, npc.user_id::text)
+      );
+
+      if created_spin.spin_id is not null then
+        placed_count := placed_count + 1;
+      end if;
+    exception when others then
+      null;
+    end;
+  end loop;
+
+  update public.npc_wheel_rounds
+  set spun_count = placed_count
+  where cycle_id = target_cycle;
+
+  return placed_count;
+end;
+$$;
+
 create or replace function public.npc_tick_system(p_session_token text default null)
 returns jsonb
 language plpgsql
@@ -753,8 +873,10 @@ declare
   caller_profile public.users%rowtype;
   created_npcs integer;
   dice_bets integer := 0;
+  wheel_spins integer := 0;
   poker_chats integer := 0;
   rr_chats integer := 0;
+  wheel_ready boolean := false;
   rr_ready boolean := false;
   rr_error text := null;
 begin
@@ -778,6 +900,21 @@ begin
   exception when others then
     rr_error := coalesce(rr_error || ' | ', '') || 'dice:' || sqlerrm;
   end;
+
+  wheel_ready := to_regclass('public.wheel_settings') is not null
+    and to_regclass('public.wheel_segments') is not null
+    and to_regclass('public.wheel_spins') is not null
+    and to_regprocedure('public.wheel_create_spin_bot(text,integer,text)') is not null;
+
+  if wheel_ready then
+    begin
+      wheel_spins := public.npc_tick_wheel();
+    exception when others then
+      rr_error := coalesce(rr_error || ' | ', '') || 'wheel:' || sqlerrm;
+    end;
+  else
+    rr_error := coalesce(rr_error || ' | ', '') || 'wheel:not_ready';
+  end if;
 
   begin
     poker_chats := public.npc_tick_poker();
@@ -806,8 +943,10 @@ begin
   return jsonb_build_object(
     'created_npcs', created_npcs,
     'dice_bets', dice_bets,
+    'wheel_spins', wheel_spins,
     'poker_chats', poker_chats,
     'rr_chats', rr_chats,
+    'wheel_ready', wheel_ready,
     'rr_ready', rr_ready,
     'error', rr_error,
     'tick_at', now()
@@ -816,8 +955,10 @@ end;
 $$;
 
 revoke all on public.npc_profiles from anon, authenticated;
+revoke all on public.npc_wheel_rounds from anon, authenticated;
 revoke all on function public.npc_ensure_accounts() from public, anon, authenticated;
 revoke all on function public.npc_tick_dice() from public, anon, authenticated;
+revoke all on function public.npc_tick_wheel() from public, anon, authenticated;
 revoke all on function public.npc_tick_poker() from public, anon, authenticated;
 revoke all on function public.npc_tick_rr() from public, anon, authenticated;
 revoke all on function public.npc_tick_system(text) from public, anon, authenticated;

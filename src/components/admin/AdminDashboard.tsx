@@ -9,6 +9,7 @@ import { AdminRoundsPage } from './AdminRoundsPage';
 import { AdminStatsPage } from './AdminStatsPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import { AdminNotificationsPage } from './AdminNotificationsPage';
+import { AdminWheelSpinPage } from './AdminWheelSpinPage';
 
 type AdminDashboardProps = {
   profile: UserProfile | null;
@@ -29,6 +30,8 @@ export function AdminDashboard({ profile, sessionToken, onBack, initialTab = 'st
         <AdminPokerPage sessionToken={sessionToken} />
       ) : activeTab === 'russian-roulette' ? (
         <AdminRussianRoulettePage sessionToken={sessionToken} />
+      ) : activeTab === 'wheel-spin' ? (
+        <AdminWheelSpinPage sessionToken={sessionToken} />
       ) : activeTab === 'rounds' ? (
         <AdminRoundsPage sessionToken={sessionToken} />
       ) : activeTab === 'chat' ? (

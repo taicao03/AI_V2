@@ -1,5 +1,6 @@
 import { Crown, Shield, FastForward, Eye, Target } from 'lucide-react';
 import type { RRPlayer } from '../../types/russianRoulette';
+import { formatNumber } from '../../lib/formatHelpers';
 
 type PlayerSeatProps = {
   player: RRPlayer;
@@ -86,15 +87,14 @@ export function PlayerSeat({ player, isCurrentTurn, isMe }: PlayerSeatProps) {
         </span>
       </div>
 
-      {/* Cyber metric pills */}
       <div className="mt-3.5 grid grid-cols-2 gap-1.5 text-[9px] font-bold text-slate-400 relative z-10">
         <div className="rounded-lg bg-black/40 border border-white/5 px-2 py-1 flex flex-col">
           <span className="text-[7px] uppercase tracking-widest text-slate-500 font-extrabold">Đăng ký (Buy-in)</span>
-          <strong className="text-white mt-0.5 text-[11px] truncate font-display">{player.buy_in_amount} xu</strong>
+          <strong className="text-white mt-0.5 text-[11px] truncate font-display">{formatNumber(player.buy_in_amount)} xu</strong>
         </div>
         <div className="rounded-lg bg-black/40 border border-white/5 px-2 py-1 flex flex-col">
           <span className="text-[7px] uppercase tracking-widest text-slate-500 font-extrabold">Điểm đã khóa</span>
-          <strong className="text-amber-400 mt-0.5 text-[11px] truncate font-display">{player.locked_points} xu</strong>
+          <strong className="text-amber-400 mt-0.5 text-[11px] truncate font-display">{formatNumber(player.locked_points)} xu</strong>
         </div>
       </div>
 

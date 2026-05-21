@@ -141,11 +141,11 @@ export function HomePage({
               secondsLeft={secondsLeft}
               settling={settling}
             />
-            {/* <DiceDisplay 
+            <DiceDisplay 
               dice={currentRound?.dice ?? [1, 2, 3]} 
               rolling={settling} 
               outcome={currentRound?.result_type ?? 'tai'} 
-            /> */}
+            />
             <div className="relative">
               {/* Login Call to Action if not authenticated */}
               {!isAuthenticated && (

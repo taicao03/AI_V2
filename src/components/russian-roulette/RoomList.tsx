@@ -1,6 +1,7 @@
 import { Copy, Eye, LogIn, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { RRRoomLobbyItem } from '../../types/russianRoulette';
+import { formatNumber } from '../../lib/formatHelpers';
 
 type RoomListProps = {
   rooms: RRRoomLobbyItem[];
@@ -104,7 +105,7 @@ export function RoomList({ rooms, loading, onJoin }: RoomListProps) {
               <div className="text-right">
                 <span className="text-[8px] uppercase tracking-wider text-slate-500 block font-bold">Lệ phí (Buy-in)</span>
                 <span className="text-sm font-black text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.25)]">
-                  {room.buy_in_amount} xu
+                  {formatNumber(room.buy_in_amount)} xu
                 </span>
               </div>
             </div>

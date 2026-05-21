@@ -5,6 +5,7 @@ import { PlayerSeat } from './PlayerSeat';
 import { RRChatBox } from './RRChatBox';
 import { TurnTimer } from './TurnTimer';
 import { RevolverCylinder } from './RevolverCylinder';
+import { formatNumber } from '../../lib/formatHelpers';
 import { 
   CustomizableLayoutContainer, 
   CustomizableWidget, 
@@ -116,7 +117,7 @@ export function GameTable({
             <div>
               <div className="text-lg font-black text-white tracking-wide">{roomState.room.name}</div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-bold mt-0.5">
-                {roomState.room.status} · pot {round?.pot_amount ?? 0} · buy-in {roomState.room.buy_in_amount}
+                {roomState.room.status} · pot {formatNumber(round?.pot_amount ?? 0)} · buy-in {formatNumber(roomState.room.buy_in_amount)}
               </div>
             </div>
             <div className="flex gap-2">

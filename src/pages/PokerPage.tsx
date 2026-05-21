@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Eye, LogIn, PlusCircle, RefreshCw, Users, Copy, Check, Send, Award, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { formatNumber } from '../lib/dice';
+import { FormattedInput } from '../components/FormattedInput';
 import { pointsService } from '../services/pointsService';
 import { pokerService } from '../services/pokerService';
 import { tableService } from '../services/tableService';
@@ -112,6 +113,7 @@ const FLOATING_BET_POSITIONS: Record<number, string> = {
   2: "top-full right-1/2 mt-1 sm:mt-2 translate-x-1/4 sm:-translate-x-4",
   3: "top-1/2 right-full mr-2 sm:mr-3 -translate-y-1/2",
   4: "bottom-full right-1/2 mb-1 sm:mb-2 translate-x-1/4 sm:-translate-x-4",
+  5: "bottom-full left-1/2 mb-1 sm:mb-2 -translate-x-1/4 sm:translate-x-4",
   6: "top-1/2 left-full ml-2 sm:ml-3 -translate-y-1/2",
 };
 
@@ -967,20 +969,18 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Min Bet</label>
-                    <input
-                      className="form-input w-full text-sm font-bold text-center"
-                      type="number"
+                    <FormattedInput
+                      className="form-input w-full text-sm font-bold text-center animate-none"
                       value={createMinBet}
-                      onChange={(event) => setCreateMinBet(Number(event.target.value))}
+                      onChange={setCreateMinBet}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Max Bet</label>
-                    <input
-                      className="form-input w-full text-sm font-bold text-center"
-                      type="number"
+                    <FormattedInput
+                      className="form-input w-full text-sm font-bold text-center animate-none"
                       value={createMaxBet}
-                      onChange={(event) => setCreateMaxBet(Number(event.target.value))}
+                      onChange={setCreateMaxBet}
                     />
                   </div>
                 </div>
@@ -1111,104 +1111,106 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
           </div>
 
           {/* VIRTUAL POKER TABLE CONTAINER - Fully Responsive Oval/Capsule Felt */}
-          <div className="flex items-center justify-center px-4 py-8 sm:px-16 sm:py-12 w-full overflow-visible">
-            <div className="relative w-full aspect-[0.72/1] sm:aspect-[2.2/1] rounded-[48px] sm:rounded-[140px] border-[6px] sm:border-[12px] border-[#131924] bg-radial-[circle_at_center,_#0b233a_0%,_#030712_90%] shadow-[inset_0_0_40px_rgba(6,182,212,0.2),_0_20px_40px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-visible">
-              {/* Felt inner line ring */}
-              <div className="absolute inset-4 sm:inset-8 rounded-[40px] sm:rounded-[112px] border border-cyan-500/10 pointer-events-none" />
+          <div className="w-full overflow-x-auto touch-pan-x scrollbar-none py-4 overflow-y-visible">
+            <div className="flex items-center justify-center px-11 xs:px-12 py-8 sm:px-16 sm:py-12 w-full min-w-[640px] sm:min-w-0 overflow-visible">
+              <div className="relative w-full aspect-[0.72/1] sm:aspect-[2.2/1] rounded-[48px] sm:rounded-[140px] border-[6px] sm:border-[12px] border-[#131924] bg-radial-[circle_at_center,_#0b233a_0%,_#030712_90%] shadow-[inset_0_0_40px_rgba(6,182,212,0.2),_0_20px_40px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-visible">
+                {/* Felt inner line ring */}
+                <div className="absolute inset-4 sm:inset-8 rounded-[40px] sm:rounded-[112px] border border-cyan-500/10 pointer-events-none" />
 
-              {/* CENTER felt deck area - Positioned absolutely in the dead center */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center space-y-2 sm:space-y-3 z-10 bg-black/55 backdrop-blur-md px-3 py-2.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl w-[150px] xs:w-[180px] sm:w-[260px] max-w-full">
-                <div className="space-y-0.5">
-                  <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400/80">TOTAL POT</span>
-                  <div className="text-sm xs:text-base sm:text-3xl font-black text-amber-300 flex items-center justify-center gap-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-                    👑 {formatNumber(tableState?.round?.pot_amount ?? 0)}
+                {/* CENTER felt deck area - Positioned absolutely in the dead center */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center space-y-2 sm:space-y-3 z-10 bg-black/55 backdrop-blur-md px-3 py-2.5 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl w-[150px] xs:w-[180px] sm:w-[260px] max-w-full">
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400/80">TOTAL POT</span>
+                    <div className="text-sm xs:text-base sm:text-3xl font-black text-amber-300 flex items-center justify-center gap-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
+                      👑 {formatNumber(tableState?.round?.pot_amount ?? 0)}
+                    </div>
                   </div>
-                </div>
 
-                {/* Community Cards Display */}
-                <div className="space-y-1 sm:space-y-1.5">
-                  <div className="text-[6px] sm:text-[8px] font-black uppercase tracking-widest text-slate-500">Community Cards</div>
-                  <div className="flex gap-1 sm:gap-2 justify-center overflow-x-auto max-w-full pb-0.5">
-                    {communityCards.length > 0 ? (
-                      communityCards.map((card, index) => (
-                        <motion.div
-                          key={`community-oval-${index}-${card}`}
-                          initial={{ scale: 0.8, rotateY: 90, opacity: 0 }}
-                          animate={{ scale: 1, rotateY: 0, opacity: 1 }}
-                          transition={{ duration: 0.35, delay: index * 0.1 }}
-                        >
-                          <PlayingCard card={card} size="responsive" />
-                        </motion.div>
-                      ))
-                    ) : (
-                      <span className="text-[7px] sm:text-[9px] text-slate-500 italic block py-1 sm:py-2">Dealing cards...</span>
+                  {/* Community Cards Display */}
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <div className="text-[6px] sm:text-[8px] font-black uppercase tracking-widest text-slate-500">Community Cards</div>
+                    <div className="flex gap-1 sm:gap-2 justify-center overflow-x-auto max-w-full pb-0.5">
+                      {communityCards.length > 0 ? (
+                        communityCards.map((card, index) => (
+                          <motion.div
+                            key={`community-oval-${index}-${card}`}
+                            initial={{ scale: 0.8, rotateY: 90, opacity: 0 }}
+                            animate={{ scale: 1, rotateY: 0, opacity: 1 }}
+                            transition={{ duration: 0.35, delay: index * 0.1 }}
+                          >
+                            <PlayingCard card={card} size="responsive" />
+                          </motion.div>
+                        ))
+                      ) : (
+                        <span className="text-[7px] sm:text-[9px] text-slate-500 italic block py-1 sm:py-2">Dealing cards...</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1 sm:gap-1.5">
+                    <div className="text-[6px] sm:text-[9px] font-bold text-slate-400 bg-slate-950/40 px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full border border-white/5 truncate max-w-full">
+                      Phase: <span className="text-cyan-400 font-bold uppercase">{tableState?.round?.round_phase ?? 'Waiting'}</span>
+                    </div>
+
+                    {countdown > 0 && (
+                      <div className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 sm:px-3.5 sm:py-1 text-[8px] sm:text-xs font-black text-rose-400 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]">
+                        <span className="text-[8px] sm:text-[10px]">⏳</span>
+                        <span>ACTION: {countdown}s</span>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-1 sm:gap-1.5">
-                  <div className="text-[6px] sm:text-[9px] font-bold text-slate-400 bg-slate-950/40 px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full border border-white/5 truncate max-w-full">
-                    Phase: <span className="text-cyan-400 font-bold uppercase">{tableState?.round?.round_phase ?? 'Waiting'}</span>
+                {/* SEATS - Arranged absolute around the responsive rim */}
+                {seatedPlayers.map((player) => (
+                  <div
+                    key={`seat-${player.user_id}`}
+                    className={`absolute transition-all duration-300 ${getSeatClass(player.seat_order)}`}
+                  >
+                    <SeatCard
+                      player={player}
+                      hand={(tableState?.hands ?? []).find((hand) => hand.user_id === player.user_id) ?? null}
+                      isMe={player.user_id === profile?.uid}
+                      isHost={player.user_id === hostUserId}
+                      canKick={Boolean(isRoomHost && player.user_id !== profile?.uid)}
+                      onKick={() => void handleKickPlayer(player.user_id, player.display_name)}
+                    />
                   </div>
+                ))}
 
-                  {countdown > 0 && (
-                    <div className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 sm:px-3.5 sm:py-1 text-[8px] sm:text-xs font-black text-rose-400 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]">
-                      <span className="text-[8px] sm:text-[10px]">⏳</span>
-                      <span>ACTION: {countdown}s</span>
+                {/* Dedicated "YOUR HOLE CARDS" Display at the Bottom-Center of the felt table */}
+                {currentPlayer && !currentPlayer.is_spectator && (
+                  <motion.div
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[20%] sm:translate-y-[35%] z-20 flex flex-col items-center gap-1 sm:gap-2 rounded-2xl sm:rounded-3xl border border-purple-500 bg-[#070a16] p-2.5 sm:p-4 shadow-[0_0_15px_rgba(168,85,247,0.4)] sm:shadow-[0_0_30px_rgba(168,85,247,0.5)]"
+                    initial={{ y: 30, opacity: 0, scale: 0.9 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', damping: 15 }}
+                  >
+                    <div className="absolute -top-2.5 sm:-top-3.5 rounded-full bg-purple-600 border border-purple-400 px-2.5 py-0.5 text-[7px] sm:text-[9px] font-black uppercase tracking-widest text-white shadow-[0_0_10px_rgba(168,85,247,0.6)] whitespace-nowrap">
+                      Your Hole Cards
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="flex gap-1 sm:gap-2 pt-1">
+                      {((currentHand?.cards) ?? ['XX', 'XX', 'XX']).slice(0, 3).map((card, index) => (
+                        <motion.div
+                          key={`my-felt-card-${index}-${card}`}
+                          initial={{ rotateY: 90, scale: 0.8 }}
+                          animate={{ rotateY: 0, scale: 1 }}
+                          transition={{ duration: 0.35, delay: index * 0.1 }}
+                        >
+                          <PlayingCard card={card} size="responsive" />
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {currentHand?.hand_name && (
+                      <div className="rounded bg-black/60 border border-purple-500/20 px-2 py-0.5 sm:px-3 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider text-amber-300 shadow-inner max-w-[100px] sm:max-w-none truncate text-center">
+                        👑 {currentHand.hand_name}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
               </div>
-
-              {/* SEATS - Arranged absolute around the responsive rim */}
-              {seatedPlayers.map((player) => (
-                <div
-                  key={`seat-${player.user_id}`}
-                  className={`absolute transition-all duration-300 ${getSeatClass(player.seat_order)}`}
-                >
-                  <SeatCard
-                    player={player}
-                    hand={(tableState?.hands ?? []).find((hand) => hand.user_id === player.user_id) ?? null}
-                    isMe={player.user_id === profile?.uid}
-                    isHost={player.user_id === hostUserId}
-                    canKick={Boolean(isRoomHost && player.user_id !== profile?.uid)}
-                    onKick={() => void handleKickPlayer(player.user_id, player.display_name)}
-                  />
-                </div>
-              ))}
-
-              {/* Dedicated "YOUR HOLE CARDS" Display at the Bottom-Center of the felt table */}
-              {currentPlayer && !currentPlayer.is_spectator && (
-                <motion.div
-                  className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[20%] sm:translate-y-[35%] z-20 flex flex-col items-center gap-1 sm:gap-2 rounded-2xl sm:rounded-3xl border border-purple-500 bg-[#070a16] p-2.5 sm:p-4 shadow-[0_0_15px_rgba(168,85,247,0.4)] sm:shadow-[0_0_30px_rgba(168,85,247,0.5)]"
-                  initial={{ y: 30, opacity: 0, scale: 0.9 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  transition={{ type: 'spring', damping: 15 }}
-                >
-                  <div className="absolute -top-2.5 sm:-top-3.5 rounded-full bg-purple-600 border border-purple-400 px-2.5 py-0.5 text-[7px] sm:text-[9px] font-black uppercase tracking-widest text-white shadow-[0_0_10px_rgba(168,85,247,0.6)] whitespace-nowrap">
-                    Your Hole Cards
-                  </div>
-                  
-                  <div className="flex gap-1 sm:gap-2 pt-1">
-                    {((currentHand?.cards) ?? ['XX', 'XX', 'XX']).slice(0, 3).map((card, index) => (
-                      <motion.div
-                        key={`my-felt-card-${index}-${card}`}
-                        initial={{ rotateY: 90, scale: 0.8 }}
-                        animate={{ rotateY: 0, scale: 1 }}
-                        transition={{ duration: 0.35, delay: index * 0.1 }}
-                      >
-                        <PlayingCard card={card} size="responsive" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {currentHand?.hand_name && (
-                    <div className="rounded bg-black/60 border border-purple-500/20 px-2 py-0.5 sm:px-3 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider text-amber-300 shadow-inner max-w-[100px] sm:max-w-none truncate text-center">
-                      👑 {currentHand.hand_name}
-                    </div>
-                  )}
-                </motion.div>
-              )}
             </div>
           </div>
 
@@ -1245,11 +1247,10 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
                   <div className="flex flex-wrap items-center gap-3 bg-[#0a0d1d] p-3 rounded-xl border border-white/5">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-slate-400 uppercase font-medium">Buy-in stake</span>
-                      <input
-                        type="number"
+                      <FormattedInput
                         className="form-input w-28 text-center text-xs font-bold"
                         value={betInput}
-                        onChange={(event) => setBetInput(Number(event.target.value))}
+                        onChange={setBetInput}
                         disabled={tableState?.table.status !== 'waiting'}
                       />
                       {tableState?.table.status === 'waiting' && (
@@ -1330,11 +1331,10 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
                             onChange={(event) => setRaiseToInput(Number(event.target.value))}
                             disabled={!canTakeRoundAction}
                           />
-                          <input
-                            type="number"
-                            className="form-input w-28 text-center text-xs font-bold"
+                          <FormattedInput
+                            className="form-input w-28 text-center text-xs font-bold animate-none"
                             value={raiseToInput}
-                            onChange={(event) => setRaiseToInput(Number(event.target.value))}
+                            onChange={setRaiseToInput}
                             disabled={!canTakeRoundAction}
                           />
                         </div>

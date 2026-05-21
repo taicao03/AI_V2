@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 type NpcTickResult = {
   created_npcs: number;
   dice_bets: number;
+  wheel_spins?: number;
   poker_chats: number;
   rr_chats: number;
+  wheel_ready?: boolean;
   tick_at: string;
 };
 

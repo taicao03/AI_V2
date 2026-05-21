@@ -7,6 +7,8 @@ import {
   PresetLayout 
 } from '../layout/CustomizableLayoutContainer';
 import type { RRGameSettings, RRRoom, RRRoomState } from '../../types/russianRoulette';
+import { FormattedInput } from '../FormattedInput';
+import { formatNumber } from '../../lib/formatHelpers';
 
 type AdminRussianRoulettePageProps = {
   sessionToken: string | null;
@@ -210,7 +212,7 @@ export function AdminRussianRoulettePage({ sessionToken }: AdminRussianRouletteP
                     </span>
                   </div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500 mt-1.5 font-extrabold flex justify-between">
-                    <span>BUY-IN: <span className="text-amber-400">{room.buy_in_amount} xu</span></span>
+                    <span>BUY-IN: <span className="text-amber-400">{formatNumber(room.buy_in_amount)} xu</span></span>
                     <span>SỨC CHỨA: <span className="text-slate-300">{room.room_id === selectedRoomId ? playerCount : '-'} / {room.max_players}</span></span>
                   </div>
                 </button>
@@ -257,23 +259,21 @@ export function AdminRussianRoulettePage({ sessionToken }: AdminRussianRouletteP
               <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                 <div className="rounded-xl border border-white/5 bg-black/40 p-3 space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block">Buy-in Tối Thiểu</span>
-                  <input
+                  <FormattedInput
                     className="form-input w-full text-sm font-black text-cyan-300 border-none bg-slate-900/60 p-2 text-center rounded-lg focus:ring-1 focus:ring-cyan-500"
-                    onChange={(event) =>
-                      setSettings((current) => (current ? { ...current, min_buy_in: Number(event.target.value) } : current))
+                    onChange={(val) =>
+                      setSettings((current) => (current ? { ...current, min_buy_in: val } : current))
                     }
-                    type="number"
                     value={settings.min_buy_in}
                   />
                 </div>
                 <div className="rounded-xl border border-white/5 bg-black/40 p-3 space-y-1">
                   <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest block">Buy-in Tối Đa</span>
-                  <input
+                  <FormattedInput
                     className="form-input w-full text-sm font-black text-cyan-300 border-none bg-slate-900/60 p-2 text-center rounded-lg focus:ring-1 focus:ring-cyan-500"
-                    onChange={(event) =>
-                      setSettings((current) => (current ? { ...current, max_buy_in: Number(event.target.value) } : current))
+                    onChange={(val) =>
+                      setSettings((current) => (current ? { ...current, max_buy_in: val } : current))
                     }
-                    type="number"
                     value={settings.max_buy_in}
                   />
                 </div>
@@ -355,7 +355,7 @@ export function AdminRussianRoulettePage({ sessionToken }: AdminRussianRouletteP
                 </div>
                 <div className="rounded-xl border border-white/5 bg-black/40 p-3 shadow-inner">
                   <span className="text-[8px] text-slate-500 uppercase font-extrabold tracking-wider block">Tổng Pot Tích Lũy</span>
-                  <strong className="text-emerald-400 text-xs mt-0.5 block font-display font-black">{roomState.round?.pot_amount ?? 0} xu</strong>
+                  <strong className="text-emerald-400 text-xs mt-0.5 block font-display font-black">{formatNumber(roomState.round?.pot_amount ?? 0)} xu</strong>
                 </div>
               </div>
 

@@ -20,6 +20,7 @@ import { ChatPage } from './pages/ChatPage';
 import { HomePage } from './pages/HomePage';
 import { PokerPage } from './pages/PokerPage';
 import { RussianRoulettePage } from './pages/games/RussianRoulettePage';
+import { WheelSpinPage } from './pages/games/WheelSpinPage';
 import { npcService } from './services/npcService';
 import type { Prediction } from './types';
 import './index.css';
@@ -36,10 +37,14 @@ function useBrowserPath() {
   const navigate = useCallback((nextPath: string) => {
     window.history.pushState(null, '', nextPath);
     setPath(nextPath);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
   useEffect(() => {
-    const handlePopState = () => setPath(window.location.pathname);
+    const handlePopState = () => {
+      setPath(window.location.pathname);
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -90,6 +95,7 @@ export default function App() {
   const [feedback, setFeedback] = useState<RollFeedback | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [privateResultPopups, setPrivateResultPopups] = useState<PrivateResultPopupItem[]>([]);
+  const [wheelHeaderWinAlerts, setWheelHeaderWinAlerts] = useState<Array<HeaderWinAlert & { expiresAt: number }>>([]);
   const [dismissedAdminNotificationIds, setDismissedAdminNotificationIds] = useState<Set<string>>(new Set());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -160,8 +166,43 @@ export default function App() {
     .sort((left, right) => right.pointsChange - left.pointsChange)
     .slice(0, 6);
 
+  const mergedHeaderWinAlerts = [...wheelHeaderWinAlerts, ...headerWinAlerts]
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, 12);
+
+  const handleWheelHugeWinHeaderAlert = useCallback(
+    (payload: { displayName: string; pointsChange: number; createdAt: string; id: string }) => {
+      const expiresAt = Date.now() + 2 * 60 * 1000;
+      setWheelHeaderWinAlerts((current) => {
+        const withoutExpired = current.filter((item) => item.expiresAt > Date.now());
+        if (withoutExpired.some((item) => item.id === payload.id)) {
+          return withoutExpired;
+        }
+        return [
+          {
+            id: payload.id,
+            displayName: payload.displayName,
+            pointsChange: payload.pointsChange,
+            createdAt: payload.createdAt,
+            expiresAt,
+          },
+          ...withoutExpired,
+        ].slice(0, 12);
+      });
+    },
+    [],
+  );
+
   useEffect(() => {
-    if ((path !== '/admin' && path !== '/admin/games/russian-roulette') || !auth.sessionToken) {
+    const cleanupId = window.setInterval(() => {
+      setWheelHeaderWinAlerts((current) => current.filter((item) => item.expiresAt > Date.now()));
+    }, 10000);
+
+    return () => window.clearInterval(cleanupId);
+  }, []);
+
+  useEffect(() => {
+    if ((path !== '/admin' && path !== '/admin/games/russian-roulette' && path !== '/admin/games/wheel-spin/settings') || !auth.sessionToken) {
       return;
     }
 
@@ -486,7 +527,7 @@ export default function App() {
     setClaimLoading(false);
   }
 
-  if (path === '/admin' || path === '/admin/games/russian-roulette') {
+  if (path === '/admin' || path === '/admin/games/russian-roulette' || path === '/admin/games/wheel-spin/settings') {
     return (
       <>
         <AdminBroadcastNotifications
@@ -496,7 +537,13 @@ export default function App() {
         />
         <BannedAccountModal profile={auth.profile} />
         <AdminPage
-          initialTab={path === '/admin/games/russian-roulette' ? 'russian-roulette' : 'stats'}
+          initialTab={
+            path === '/admin/games/russian-roulette'
+              ? 'russian-roulette'
+              : path === '/admin/games/wheel-spin/settings'
+                ? 'wheel-spin'
+                : 'stats'
+          }
           loading={auth.loading || adminRefreshLoading}
           onBack={() => navigate('/')}
           profile={auth.profile}
@@ -509,7 +556,7 @@ export default function App() {
   return (
     <AppShell
       connected={connected}
-      headerWinAlerts={headerWinAlerts}
+      headerWinAlerts={mergedHeaderWinAlerts}
       notifications={notifications}
       onCloseNotification={handleCloseNotification}
       onNavigate={navigate}
@@ -545,6 +592,15 @@ export default function App() {
           onSignInClick={() => setIsAuthModalOpen(true)}
           profile={auth.profile}
           sessionToken={auth.sessionToken}
+        />
+      ) : path === '/games/wheel-spin' ? (
+        <WheelSpinPage
+          onHugeWinHeaderAlert={handleWheelHugeWinHeaderAlert}
+          onSignInClick={() => setIsAuthModalOpen(true)}
+          presenceStatus={presenceStatus}
+          profile={auth.profile}
+          sessionToken={auth.sessionToken}
+          users={users}
         />
       ) : (
         <HomePage

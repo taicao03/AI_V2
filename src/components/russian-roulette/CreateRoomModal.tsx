@@ -6,6 +6,7 @@ import {
   RR_DEFAULT_MAX_PLAYERS,
   RR_DEFAULT_MIN_BUY_IN,
 } from '../../constants/russianRoulette';
+import { FormattedInput } from '../FormattedInput';
 
 type CreateRoomModalProps = {
   isOpen: boolean;
@@ -91,12 +92,10 @@ export function CreateRoomModal({ isOpen, loading, onClose, onCreate }: CreateRo
           <label className="text-xs font-bold text-slate-400 block">
             Phí tham chiến (Buy-in)
             <div className="relative mt-1.5">
-              <input
+              <FormattedInput
                 className="form-input w-full text-xs font-bold pl-8 bg-slate-950/60 border-white/10 text-white rounded-xl focus:border-cyan-500/50"
-                min={1}
-                onChange={(event) => setBuyInAmount(Number(event.target.value))}
-                type="number"
                 value={buyInAmount}
+                onChange={setBuyInAmount}
               />
               <Coins size={12} className="absolute left-3 top-3 text-cyan-400" />
             </div>
@@ -119,23 +118,19 @@ export function CreateRoomModal({ isOpen, loading, onClose, onCreate }: CreateRo
 
           <label className="text-xs font-bold text-slate-400 block">
             Mức cược tối thiểu (Min Buy-in)
-            <input
-              className="form-input mt-1.5 w-full text-xs font-bold bg-slate-950/60 border-white/10 text-white rounded-xl focus:border-cyan-500/50"
-              min={1}
-              onChange={(event) => setMinBuyIn(Number(event.target.value))}
-              type="number"
+            <FormattedInput
+              className="form-input mt-1.5 w-full text-xs font-bold bg-slate-950/60 border-white/10 text-white rounded-xl focus:border-cyan-500/50 animate-none"
               value={minBuyIn}
+              onChange={setMinBuyIn}
             />
           </label>
 
           <label className="text-xs font-bold text-slate-400 block">
             Mức cược tối đa (Max Buy-in)
-            <input
-              className="form-input mt-1.5 w-full text-xs font-bold bg-slate-950/60 border-white/10 text-white rounded-xl focus:border-cyan-500/50"
-              min={1}
-              onChange={(event) => setMaxBuyIn(Number(event.target.value))}
-              type="number"
+            <FormattedInput
+              className="form-input mt-1.5 w-full text-xs font-bold bg-slate-950/60 border-white/10 text-white rounded-xl focus:border-cyan-500/50 animate-none"
               value={maxBuyIn}
+              onChange={setMaxBuyIn}
             />
           </label>
 

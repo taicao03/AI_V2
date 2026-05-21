@@ -6,6 +6,8 @@ import {
   EyeOff, 
   ArrowLeft, 
   ArrowRight, 
+  ArrowUp,
+  ArrowDown,
   Maximize2, 
   Minimize2, 
   RotateCcw, 
@@ -108,20 +110,33 @@ export function CustomizableLayoutContainer({
   };
 
   // Reorder: Shift position in the array
-  const moveWidget = (index: number, direction: 'prev' | 'next') => {
-    const targetIndex = direction === 'prev' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= layoutStates.length) return;
+  const moveWidget = (id: string, direction: 'prev' | 'next') => {
+    const visibleStates = layoutStates.filter(s => s.visible);
+    const visibleIndex = visibleStates.findIndex(s => s.id === id);
+    if (visibleIndex === -1) return;
+
+    const targetVisibleIndex = direction === 'prev' ? visibleIndex - 1 : visibleIndex + 1;
+    if (targetVisibleIndex < 0 || targetVisibleIndex >= visibleStates.length) return;
+
+    const targetId = visibleStates[targetVisibleIndex].id;
+
+    // Find absolute indices in layoutStates array
+    const indexInAll = layoutStates.findIndex(s => s.id === id);
+    const targetIndexInAll = layoutStates.findIndex(s => s.id === targetId);
+
+    if (indexInAll === -1 || targetIndexInAll === -1) return;
 
     const updated = [...layoutStates];
-    // Swap order property
-    const tempOrder = updated[index].order;
-    updated[index].order = updated[targetIndex].order;
-    updated[targetIndex].order = tempOrder;
+    
+    // Swap order properties
+    const tempOrder = updated[indexInAll].order;
+    updated[indexInAll].order = updated[targetIndexInAll].order;
+    updated[targetIndexInAll].order = tempOrder;
 
-    // Swap indices in the array to let motion.div handle layout animation
-    const tempItem = updated[index];
-    updated[index] = updated[targetIndex];
-    updated[targetIndex] = tempItem;
+    // Swap items in the array to let motion.div handle layout animation
+    const tempItem = updated[indexInAll];
+    updated[indexInAll] = updated[targetIndexInAll];
+    updated[targetIndexInAll] = tempItem;
 
     saveLayout(updated);
   };
@@ -367,7 +382,7 @@ export function CustomizableLayoutContainer({
                 )}
 
                 {/* Grid Item Card Wrapper */}
-                <div className={`h-full flex flex-col group ${isEditing ? 'opacity-90 select-none' : ''}`}>
+                <div className={`h-full flex flex-col group touch-pan-y ${isEditing ? 'opacity-90 select-none' : ''}`}>
                   {/* Edit Handles Strip overlay inside card when editing */}
                   {isEditing && (
                     <div className="flex items-center justify-between rounded-t-2xl border-t border-x border-cyan-500/30 bg-[#0c1428] px-3 py-1.5 text-xs text-slate-300 z-40">
@@ -395,24 +410,26 @@ export function CustomizableLayoutContainer({
                         </div>
 
                         {/* Reorder Arrows */}
-                        <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/5">
+                        <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/5 items-center">
                           <button
                             disabled={index === 0}
-                            onClick={() => moveWidget(index, 'prev')}
-                            className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all duration-150"
+                            onClick={() => moveWidget(state.id, 'prev')}
+                            className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 flex items-center justify-center min-h-[32px] min-w-[32px]"
                             title="Di chuyển lên/trái"
                             type="button"
                           >
-                            <ArrowLeft size={10} />
+                            <ArrowUp size={12} className="block lg:hidden" />
+                            <ArrowLeft size={12} className="hidden lg:block" />
                           </button>
                           <button
                             disabled={index === layoutStates.filter(s => s.visible).length - 1}
-                            onClick={() => moveWidget(index, 'next')}
-                            className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all duration-150"
+                            onClick={() => moveWidget(state.id, 'next')}
+                            className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 flex items-center justify-center min-h-[32px] min-w-[32px]"
                             title="Di chuyển xuống/phải"
                             type="button"
                           >
-                            <ArrowRight size={10} />
+                            <ArrowDown size={12} className="block lg:hidden" />
+                            <ArrowRight size={12} className="hidden lg:block" />
                           </button>
                         </div>
 

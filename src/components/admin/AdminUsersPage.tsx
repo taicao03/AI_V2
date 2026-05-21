@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { 
   Ban, 
   Gift, 
@@ -26,6 +26,7 @@ type AdminUsersPageProps = {
 export function AdminUsersPage({ sessionToken }: AdminUsersPageProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [transactions, setTransactions] = useState<PointsTransaction[]>([]);
   const [amount, setAmount] = useState('');
@@ -38,15 +39,33 @@ export function AdminUsersPage({ sessionToken }: AdminUsersPageProps) {
   const [banLoading, setBanLoading] = useState(false);
   const [banError, setBanError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const loadUsers = useCallback(async () => {
-    setLoading(true);
-    const { data, error: usersError } = await adminService.listUsers(sessionToken, search);
+    const firstLoad = !hasLoadedRef.current;
+    if (firstLoad) {
+      setLoading(true);
+    } else {
+      setSearching(true);
+    }
+
+    const { data, error: usersError } = await adminService.listUsers(sessionToken, debouncedSearch);
     setUsers(data);
     setError(usersError?.message ?? null);
+    hasLoadedRef.current = true;
     setLoading(false);
-  }, [search, sessionToken]);
+    setSearching(false);
+  }, [debouncedSearch, sessionToken]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   useEffect(() => {
     void loadUsers();
@@ -188,7 +207,7 @@ export function AdminUsersPage({ sessionToken }: AdminUsersPageProps) {
             </div>
             
             <div className="flex h-11 items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 transition-all focus-within:border-cyan-400/50 sm:w-64">
-              <Search className="text-slate-500 shrink-0" size={16} />
+              {searching ? <Loader2 className="text-cyan-400 shrink-0 animate-spin" size={16} /> : <Search className="text-slate-500 shrink-0" size={16} />}
               <input 
                 className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" 
                 onChange={(event) => setSearch(event.target.value)} 

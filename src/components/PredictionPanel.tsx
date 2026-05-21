@@ -1,6 +1,7 @@
 import { Loader2, Target, Wallet, Zap } from 'lucide-react';
 import type { Outcome, Prediction } from '../types';
 import { formatNumber, formatOutcome, formatPrediction, validateBetAmount } from '../lib/dice';
+import { FormattedInput } from './FormattedInput';
 
 export type RollFeedback = {
   result: 'pending' | 'win' | 'lose';
@@ -51,7 +52,7 @@ export function PredictionPanel({
     <div className="mx-auto max-w-2xl w-full">
       <section className="panel group overflow-hidden p-0 border-white/20 shadow-[0_0_50px_rgba(34,211,238,0.05)]">
         {/* Header */}
-        <div className="relative border-b border-white/5 bg-white/5 px-8 py-6 flex items-center justify-between">
+        <div className="relative border-b border-white/5 bg-white/5 px-4 sm:px-8 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
            <div className="space-y-1">
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">
                 <Target size={14} />
@@ -60,7 +61,7 @@ export function PredictionPanel({
               <h2 className="font-display text-2xl font-black tracking-tight text-white uppercase italic">Arena Selection</h2>
            </div>
            
-           <div className="flex flex-col items-end gap-1.5">
+           <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1.5 w-full sm:w-auto border-t border-white/5 sm:border-t-0 pt-3 sm:pt-0">
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live Target</span>
               <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-black uppercase text-white shadow-[0_0_15px_rgba(34,211,238,0.15)] animate-pulse">
                 {formatPrediction(prediction)}
@@ -117,14 +118,12 @@ export function PredictionPanel({
              <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
                  <div className="group relative flex h-14 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 transition-all focus-within:border-cyan-400/50">
                     <Zap size={16} className="text-cyan-400 opacity-50" />
-                    <input
-                      className="min-w-0 flex-1 bg-transparent text-lg font-black text-white outline-none placeholder:text-slate-700"
-                      min={1}
-                      onChange={(event) => onBetAmountChange(Number(event.target.value))}
-                      placeholder="0.00"
-                      type="number"
-                      value={Number.isNaN(betAmount) ? '' : betAmount}
-                    />
+                     <FormattedInput
+                       className="min-w-0 flex-1 bg-transparent text-lg font-black text-white outline-none placeholder:text-slate-700"
+                       value={betAmount}
+                       onChange={onBetAmountChange}
+                       placeholder="0"
+                     />
                     <span className="text-[11px] font-black tracking-[0.2em] text-cyan-400/60 uppercase">PTS</span>
                  </div>
                 <div className="grid grid-cols-3 gap-2">

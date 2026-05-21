@@ -129,6 +129,8 @@ export function normalizeOutcome(value: unknown, total?: number): Outcome {
   return getOutcome(total ?? 3);
 }
 
+import { formatNumber as formatNumberVi } from './formatHelpers';
+
 export function formatNumber(value: number): string {
-  return value.toLocaleString();
+  return formatNumberVi(value);
 }

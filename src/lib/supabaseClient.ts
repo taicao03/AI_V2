@@ -37,6 +37,11 @@ export const TABLES = {
   rrActions: 'rr_actions',
   rrChatMessages: 'rr_chat_messages',
   rrGameSettings: 'rr_game_settings',
+  wheelSettings: 'wheel_settings',
+  wheelSegments: 'wheel_segments',
+  wheelSpins: 'wheel_spins',
+  wheelChatMessages: 'wheel_chat_messages',
+  wheelPlayerStats: 'wheel_player_stats',
 } as const;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
