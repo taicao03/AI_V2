@@ -57,14 +57,17 @@ begin
   seat_players := array(
     select p.user_id
     from public.poker_players p
+    join public.users u on u.uid = p.user_id
     where p.table_id = p_table_id
       and p.left_at is null
       and p.is_spectator = false
       and p.is_ready = true
+      and greatest(0, u.points - u.locked_points) >= greatest(target_table.min_bet, p.current_bet)
+      and p.current_bet between target_table.min_bet and target_table.max_bet
     order by p.seat_order asc
   );
 
-  if array_length(seat_players, 1) < 2 then
+  if coalesce(array_length(seat_players, 1), 0) < 2 then
     raise exception 'Not enough ready players' using errcode = '22023';
   end if;
 
@@ -91,12 +94,15 @@ begin
   delete from public.poker_side_pots where round_id = round_record.round_id;
 
   for player_record in
-    select *
+    select p.*
     from public.poker_players p
+    join public.users u on u.uid = p.user_id
     where p.table_id = p_table_id
       and p.left_at is null
       and p.is_spectator = false
       and p.is_ready = true
+      and greatest(0, u.points - u.locked_points) >= greatest(target_table.min_bet, p.current_bet)
+      and p.current_bet between target_table.min_bet and target_table.max_bet
     order by p.seat_order asc
     for update
   loop
@@ -1174,6 +1180,23 @@ begin
     and p.is_bot = true
     and greatest(0, u.points - u.locked_points) <= 0;
 
+  update public.poker_players p
+  set left_at = now(),
+      is_ready = false,
+      has_folded = true,
+      is_all_in = false,
+      player_status = 'folded',
+      updated_at = now()
+  from public.users u
+  join public.poker_tables t on true
+  where p.user_id = u.uid
+    and t.table_id = p.table_id
+    and p.left_at is null
+    and p.is_spectator = false
+    and p.is_bot = true
+    and t.status <> 'closed'
+    and greatest(0, u.points - u.locked_points) < greatest(t.min_bet, coalesce(p.current_bet, t.min_bet));
+
   select count(distinct p.user_id) into wealthy_bot_count
   from public.poker_players p
   join public.users u on u.uid = p.user_id
@@ -1251,7 +1274,37 @@ begin
   loop
     if table_record.status in ('waiting', 'countdown') then
       update public.poker_players p
-      set is_ready = true,
+      set left_at = now(),
+          is_ready = false,
+          has_folded = true,
+          is_all_in = false,
+          player_status = 'folded',
+          updated_at = now()
+      from public.users u
+      where p.table_id = table_record.table_id
+        and p.user_id = u.uid
+        and p.left_at is null
+        and p.is_spectator = false
+        and p.is_bot = true
+        and greatest(0, u.points - u.locked_points) < table_record.min_bet;
+
+      update public.poker_players p
+      set left_at = now(),
+          is_ready = false,
+          has_folded = true,
+          is_all_in = false,
+          player_status = 'folded',
+          updated_at = now()
+      from public.users u
+      where p.table_id = table_record.table_id
+        and p.user_id = u.uid
+        and p.left_at is null
+        and p.is_spectator = false
+        and p.is_bot = true
+        and greatest(0, u.points - u.locked_points) < greatest(table_record.min_bet, coalesce(p.current_bet, table_record.min_bet));
+
+      update public.poker_players p
+      set is_ready = (greatest(0, u.points - u.locked_points) >= table_record.min_bet),
           npc_personality = coalesce(
             p.npc_personality,
             (array['conservative', 'aggressive', 'random', 'smart'])[1 + floor(random() * 4)::integer]
@@ -1259,6 +1312,7 @@ begin
           current_bet = greatest(
             1,
             least(
+              greatest(0, u.points - u.locked_points),
               table_record.max_bet,
               greatest(
                 table_record.min_bet,
@@ -1299,7 +1353,8 @@ begin
         and p.user_id = u.uid
         and p.left_at is null
         and p.is_spectator = false
-        and p.is_bot = true;
+        and p.is_bot = true
+        and greatest(0, u.points - u.locked_points) >= table_record.min_bet;
 
       select count(*) into human_seated_count
       from public.poker_players p
@@ -1314,7 +1369,7 @@ begin
       where p.table_id = table_record.table_id
         and p.left_at is null
         and p.is_spectator = false
-        and greatest(0, u.points - u.locked_points) > 0;
+        and greatest(0, u.points - u.locked_points) >= table_record.min_bet;
 
       select count(*) into seated_count
       from public.poker_players p
@@ -1347,10 +1402,13 @@ begin
     select count(*)
     into ready_count
     from public.poker_players p
+    join public.users u on u.uid = p.user_id
     where p.table_id = table_record.table_id
       and p.left_at is null
       and p.is_spectator = false
-      and p.is_ready = true;
+      and p.is_ready = true
+      and p.current_bet between table_record.min_bet and table_record.max_bet
+      and greatest(0, u.points - u.locked_points) >= greatest(table_record.min_bet, p.current_bet);
 
     if table_record.status = 'waiting' then
       if ready_count >= 2 then

@@ -1633,16 +1633,12 @@ begin
     raise exception 'Bet amount must be at least 1' using errcode = '22023';
   end if;
 
-  if p_prediction_type is null or p_prediction_type not in ('tai_xiu', 'total') then
-    raise exception 'Invalid prediction type' using errcode = '22023';
+  if p_prediction_type is distinct from 'tai_xiu' then
+    raise exception 'Only Tai/Xiu bets are supported' using errcode = '22023';
   end if;
 
-  if p_prediction_type = 'tai_xiu' and normalized_value not in ('tai', 'xiu') then
+  if normalized_value not in ('tai', 'xiu') then
     raise exception 'Invalid Tai/Xiu prediction' using errcode = '22023';
-  end if;
-
-  if p_prediction_type = 'total' and (normalized_value !~ '^[0-9]+$' or normalized_value::integer not between 3 and 18) then
-    raise exception 'Invalid total prediction' using errcode = '22023';
   end if;
 
   select *
@@ -1663,7 +1659,7 @@ begin
     raise exception 'Not enough available points' using errcode = '22023';
   end if;
 
-  multiplier := case when p_prediction_type = 'total' then 5 else 1 end;
+  multiplier := 1;
   locked_before := locked_user.locked_points;
 
   insert into public.bets (
@@ -1680,7 +1676,7 @@ begin
   values (
     current_uid,
     active_round.round_id,
-    p_prediction_type,
+    'tai_xiu',
     normalized_value,
     p_bet_amount,
     multiplier,

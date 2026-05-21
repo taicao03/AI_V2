@@ -19,6 +19,8 @@ import { AdminPage } from './pages/AdminPage';
 import { ChatPage } from './pages/ChatPage';
 import { HomePage } from './pages/HomePage';
 import { PokerPage } from './pages/PokerPage';
+import { RussianRoulettePage } from './pages/games/RussianRoulettePage';
+import { npcService } from './services/npcService';
 import type { Prediction } from './types';
 import './index.css';
 
@@ -51,6 +53,7 @@ export default function App() {
   const { navigate, path } = useBrowserPath();
   const {
     currentRound,
+    currentRoundBetTotals,
     allHistory,
     secondsLeft,
     settling,
@@ -158,7 +161,7 @@ export default function App() {
     .slice(0, 6);
 
   useEffect(() => {
-    if (path !== '/admin' || !auth.sessionToken) {
+    if ((path !== '/admin' && path !== '/admin/games/russian-roulette') || !auth.sessionToken) {
       return;
     }
 
@@ -175,6 +178,39 @@ export default function App() {
       mounted = false;
     };
   }, [auth.sessionToken, path]);
+
+  useEffect(() => {
+    if (!auth.sessionToken) {
+      return;
+    }
+
+    let mounted = true;
+    let intervalId: number | null = null;
+
+    const runNpcTick = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      void npcService.tickSystem(auth.sessionToken).then((result) => {
+        if (!mounted || !result.error) {
+          return;
+        }
+        console.warn('[NPC] tick error:', result.error.message);
+      });
+    };
+
+    runNpcTick();
+    const jitterMs = Math.floor(Math.random() * 5000);
+    intervalId = window.setInterval(runNpcTick, 20000 + jitterMs);
+
+    return () => {
+      mounted = false;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [auth.sessionToken]);
 
   const notifyVipReturn = useCallback(
     (uid: string, displayName: string) => {
@@ -450,7 +486,7 @@ export default function App() {
     setClaimLoading(false);
   }
 
-  if (path === '/admin') {
+  if (path === '/admin' || path === '/admin/games/russian-roulette') {
     return (
       <>
         <AdminBroadcastNotifications
@@ -460,6 +496,7 @@ export default function App() {
         />
         <BannedAccountModal profile={auth.profile} />
         <AdminPage
+          initialTab={path === '/admin/games/russian-roulette' ? 'russian-roulette' : 'stats'}
           loading={auth.loading || adminRefreshLoading}
           onBack={() => navigate('/')}
           profile={auth.profile}
@@ -503,6 +540,12 @@ export default function App() {
           profile={auth.profile}
           sessionToken={auth.sessionToken}
         />
+      ) : path === '/games/russian-roulette' ? (
+        <RussianRoulettePage
+          onSignInClick={() => setIsAuthModalOpen(true)}
+          profile={auth.profile}
+          sessionToken={auth.sessionToken}
+        />
       ) : (
         <HomePage
           actionError={actionError}
@@ -511,6 +554,7 @@ export default function App() {
           betAmount={betAmount}
           claimLoading={claimLoading}
           currentRound={currentRound}
+          currentRoundBetTotals={currentRoundBetTotals}
           displayError={displayError}
           feedback={feedback}
           isAuthenticated={isAuthenticated}

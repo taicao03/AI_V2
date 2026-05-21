@@ -1,4 +1,4 @@
-import { ShieldCheck, Home, MessageSquare, ShieldAlert, Crown } from 'lucide-react';
+import { ShieldCheck, Home, MessageSquare, ShieldAlert, Crown, Target } from 'lucide-react';
 import { HeaderWinTicker, type HeaderWinAlert } from './HeaderWinTicker';
 import { NotificationCenter, type NotificationItem } from './NotificationCenter';
 import { UserHeader } from './UserHeader';
@@ -75,6 +75,7 @@ export function AppShell({
             <nav className="flex items-center gap-1 rounded-2xl border border-white/5 bg-white/5 p-1.5 backdrop-blur-xl w-full sm:w-auto">
               <NavButton icon={<Home size={18} />} label="Arena" onClick={() => onNavigate('/')} />
               <NavButton icon={<Crown size={18} />} label="Poker" onClick={() => onNavigate('/poker')} />
+              <NavButton icon={<Target size={18} />} label="Roulette" onClick={() => onNavigate('/games/russian-roulette')} />
               <NavButton icon={<MessageSquare size={18} />} label="Comms" onClick={() => onNavigate('/chat')} />
               {profile?.role === 'admin' && (
                 <NavButton icon={<ShieldAlert size={18} />} label="Control" onClick={() => onNavigate('/admin')} />

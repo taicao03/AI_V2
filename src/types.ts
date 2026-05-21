@@ -182,6 +182,12 @@ export type RoundTickResult = {
   active_round_id: string;
 };
 
+export type DiceRoundBetTotals = {
+  tai: number;
+  xiu: number;
+  total: number;
+};
+
 export type ProfileStats = {
   totalPoints: number;
   totalBets: number;

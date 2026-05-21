@@ -1,13 +1,14 @@
 import { Clock, Loader2, Zap } from 'lucide-react';
-import type { DiceRound } from '../types';
+import type { DiceRound, DiceRoundBetTotals } from '../types';
 
 type RoundTimerProps = {
   currentRound: DiceRound | null;
+  currentRoundBetTotals: DiceRoundBetTotals;
   secondsLeft: number;
   settling: boolean;
 };
 
-export function RoundTimer({ currentRound, secondsLeft, settling }: RoundTimerProps) {
+export function RoundTimer({ currentRound, currentRoundBetTotals, secondsLeft, settling }: RoundTimerProps) {
   const progress = (secondsLeft / 30) * 100;
   const isCritical = secondsLeft <= 5 && !settling;
 
@@ -55,6 +56,18 @@ export function RoundTimer({ currentRound, secondsLeft, settling }: RoundTimerPr
                 <div className={`h-1.5 w-1.5 rounded-full ${connected_color(settling, isCritical)}`} />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Live Sync</span>
              </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200">
+              Tong cuoc Tai: {currentRoundBetTotals.tai.toLocaleString()}
+            </div>
+            <div className="rounded-lg border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-sky-200">
+              Tong cuoc Xiu: {currentRoundBetTotals.xiu.toLocaleString()}
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-300">
+              Tong: {currentRoundBetTotals.total.toLocaleString()}
+            </div>
           </div>
         </div>
 

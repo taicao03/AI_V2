@@ -10,9 +10,10 @@ type AdminPageProps = {
   onBack: () => void;
   profile: UserProfile | null;
   sessionToken: string | null;
+  initialTab?: string;
 };
 
-export function AdminPage({ loading, onBack, profile, sessionToken }: AdminPageProps) {
+export function AdminPage({ loading, onBack, profile, sessionToken, initialTab }: AdminPageProps) {
   const [checkingAdmin, setCheckingAdmin] = useState(false);
   const [isAdminAllowed, setIsAdminAllowed] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
@@ -169,7 +170,12 @@ export function AdminPage({ loading, onBack, profile, sessionToken }: AdminPageP
 
   return (
     <AdminErrorBoundary onBack={onBack}>
-      <AdminDashboard onBack={onBack} profile={{ ...profile, role: 'admin' }} sessionToken={sessionToken} />
+      <AdminDashboard
+        initialTab={initialTab}
+        onBack={onBack}
+        profile={{ ...profile, role: 'admin' }}
+        sessionToken={sessionToken}
+      />
     </AdminErrorBoundary>
   );
 }

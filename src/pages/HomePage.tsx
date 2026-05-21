@@ -5,7 +5,7 @@ import { OnlineUsers } from '../components/OnlineUsers';
 import { PredictionPanel, type RollFeedback } from '../components/PredictionPanel';
 import { ProfileCard } from '../components/ProfileCard';
 import { RoundTimer } from '../components/RoundTimer';
-import type { DiceRound, LeaderboardUser, OnlineUser, Prediction, ProfileStats, UserProfile } from '../types';
+import type { DiceRound, DiceRoundBetTotals, LeaderboardUser, OnlineUser, Prediction, ProfileStats, UserProfile } from '../types';
 import { DiceDisplay } from '../components/DiceDisplay';
 
 type AuthActions = {
@@ -24,6 +24,7 @@ type HomePageProps = {
   betAmount: number;
   claimLoading: boolean;
   currentRound: DiceRound | null;
+  currentRoundBetTotals: DiceRoundBetTotals;
   displayError: string | null;
   feedback: RollFeedback | null;
   isAuthenticated: boolean;
@@ -52,6 +53,7 @@ export function HomePage({
   betAmount,
   claimLoading,
   currentRound,
+  currentRoundBetTotals,
   displayError,
   feedback,
   isAuthenticated,
@@ -133,7 +135,12 @@ export function HomePage({
         {/* Center Wing: THE ARENA */}
         <div className="order-1 flex flex-col gap-6 sm:gap-10 lg:order-2">
           <div className="space-y-8 sm:space-y-12">
-            <RoundTimer currentRound={currentRound} secondsLeft={secondsLeft} settling={settling} />
+            <RoundTimer
+              currentRound={currentRound}
+              currentRoundBetTotals={currentRoundBetTotals}
+              secondsLeft={secondsLeft}
+              settling={settling}
+            />
             {/* <DiceDisplay 
               dice={currentRound?.dice ?? [1, 2, 3]} 
               rolling={settling} 

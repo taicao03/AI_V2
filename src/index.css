@@ -476,3 +476,109 @@ body {
     opacity: 1;
   }
 }
+
+/* --- Cyber Custom Animations & Keyframes --- */
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+.animate-border-pulse {
+  animation: border-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-laser-scanner {
+  position: relative;
+}
+
+.animate-laser-scanner::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22d3ee, #a855f7, #22d3ee, transparent);
+  box-shadow: 0 0 12px #22d3ee, 0 0 4px #a855f7;
+  animation: laser-scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.animate-recoil-shake {
+  animation: recoil-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.animate-cyber-pulse {
+  animation: cyber-pulse 2s infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes border-pulse {
+  0%, 100% {
+    border-color: rgba(34, 211, 238, 0.25);
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    border-color: rgba(34, 211, 238, 0.85);
+    box-shadow: 0 0 25px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(34, 211, 238, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+    filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.3));
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(34, 211, 238, 0.8);
+    filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.6));
+  }
+}
+
+@keyframes laser-scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes recoil-shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+@keyframes cyber-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type {
   BetHistoryItem,
+  DiceRoundBetTotals,
   DiceTuple,
   DiceRound,
   LeaderboardUser,
@@ -30,6 +31,12 @@ export const TABLES = {
   pokerResults: 'poker_results',
   pokerChatMessages: 'poker_chat_messages',
   pokerPlayerStats: 'poker_player_stats',
+  rrRooms: 'rr_rooms',
+  rrPlayers: 'rr_players',
+  rrRounds: 'rr_rounds',
+  rrActions: 'rr_actions',
+  rrChatMessages: 'rr_chat_messages',
+  rrGameSettings: 'rr_game_settings',
 } as const;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -275,6 +282,50 @@ export async function getCurrentRound(): Promise<{ data: DiceRound | null; error
   }
 
   return { data: normalizeRound(data), error: null };
+}
+
+export async function getRoundBetTotals(roundId: string | null): Promise<{ data: DiceRoundBetTotals; error: Error | null }> {
+  if (!supabase) {
+    return {
+      data: { tai: 0, xiu: 0, total: 0 },
+      error: new Error('Chua cau hinh Supabase.'),
+    };
+  }
+
+  if (!roundId) {
+    return { data: { tai: 0, xiu: 0, total: 0 }, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from(TABLES.bets)
+    .select('prediction_type, prediction_value, bet_amount')
+    .eq('round_id', roundId)
+    .in('status', ['pending', 'settled']);
+
+  if (error) {
+    return { data: { tai: 0, xiu: 0, total: 0 }, error: new Error(error.message) };
+  }
+
+  let tai = 0;
+  let xiu = 0;
+
+  for (const row of data ?? []) {
+    const predictionType = String(row.prediction_type ?? '');
+    const predictionValue = String(row.prediction_value ?? '').toLowerCase();
+    const betAmount = Number(row.bet_amount ?? 0);
+
+    if (predictionType !== 'tai_xiu' || !Number.isFinite(betAmount) || betAmount <= 0) {
+      continue;
+    }
+
+    if (predictionValue === 'tai') {
+      tai += betAmount;
+    } else if (predictionValue === 'xiu') {
+      xiu += betAmount;
+    }
+  }
+
+  return { data: { tai, xiu, total: tai + xiu }, error: null };
 }
 
 export async function settleDueRounds(): Promise<{ data: RoundTickResult[]; error: Error | null }> {

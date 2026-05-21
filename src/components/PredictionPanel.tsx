@@ -1,6 +1,6 @@
-import { Dice5, Loader2, Target, Wallet, Zap } from 'lucide-react';
+import { Loader2, Target, Wallet, Zap } from 'lucide-react';
 import type { Outcome, Prediction } from '../types';
-import { BET_PRESETS, formatNumber, formatOutcome, formatPrediction, TOTAL_VALUES, validateBetAmount } from '../lib/dice';
+import { formatNumber, formatOutcome, formatPrediction, validateBetAmount } from '../lib/dice';
 
 export type RollFeedback = {
   result: 'pending' | 'win' | 'lose';
@@ -99,35 +99,6 @@ export function PredictionPanel({
                 </button>
               );
             })}
-          </div>
-
-          {/* Specific Totals */}
-          <div className="space-y-4">
-             <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">Specific Totals</span>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
-             </div>
-             <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-                {TOTAL_VALUES.map((total) => {
-                  const candidate: Prediction = { kind: 'total', value: total };
-                  const selected = isSelected(prediction, candidate);
-                  return (
-                    <button
-                      key={total}
-                      onClick={() => onPredictionChange(candidate)}
-                      className={`h-11 rounded-xl border text-sm font-black transition-all ${
-                        selected 
-                          ? 'border-purple-400/50 bg-purple-400/20 text-white' 
-                          : 'border-white/5 bg-white/5 text-slate-500 hover:border-white/10 hover:text-white'
-                      }`}
-                      type="button"
-                    >
-                      {total}
-                    </button>
-                  );
-                })}
-             </div>
           </div>
 
           {/* Wager Control */}
