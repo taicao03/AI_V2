@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Eye, LogIn, PlusCircle, RefreshCw, Users, Copy, Check, Send, Award, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -8,6 +8,7 @@ import { pointsService } from '../services/pointsService';
 import { pokerService } from '../services/pokerService';
 import { tableService } from '../services/tableService';
 import { chatService } from '../services/chatService';
+import { createTaskScheduler, type TaskScheduler } from '../core/scheduler';
 import type { PokerHand, PokerLeaderboardEntry, PokerPlayer, PokerTableLobbyItem, PokerTableState, UserProfile } from '../types';
 
 type PokerPageProps = {
@@ -341,7 +342,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [ticking, setTicking] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Table Creation states
@@ -357,6 +357,12 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
   const [betInput, setBetInput] = useState<number>(10);
   const [raiseToInput, setRaiseToInput] = useState<number>(0);
   const [insufficientPopup, setInsufficientPopup] = useState<{ required: number; available: number } | null>(null);
+  const lobbySchedulerRef = useRef<TaskScheduler | null>(null);
+  const tableSchedulerRef = useRef<TaskScheduler | null>(null);
+  const tableStateInFlightRef = useRef(false);
+  const tableStateQueuedRef = useRef(false);
+  const tableRealtimeConnectedRef = useRef(false);
+  const lastTableRealtimeEventAtRef = useRef(0);
 
   const currentPlayer = useMemo(
     () => tableState?.players.find((player) => player.user_id === profile?.uid) ?? null,
@@ -456,17 +462,20 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
     }
   }, [sessionToken]);
 
-  const runTick = useCallback(async () => {
-    if (!sessionToken) return;
-    const tickResult = await pokerService.tickTables(sessionToken);
-    if (tickResult.error) {
-      setError(`Tick error: ${tickResult.error.message}`);
-    }
-  }, [sessionToken]);
-
   const loadTableState = useCallback(async () => {
     if (!selectedTableId || !sessionToken) return;
+    if (tableStateInFlightRef.current) {
+      tableStateQueuedRef.current = true;
+      return;
+    }
+
+    tableStateInFlightRef.current = true;
     const stateResult = await pokerService.getTableState(sessionToken, selectedTableId);
+    tableStateInFlightRef.current = false;
+    if (tableStateQueuedRef.current) {
+      tableStateQueuedRef.current = false;
+      tableSchedulerRef.current?.schedule();
+    }
 
     if (stateResult.error || !stateResult.data) {
       setError(stateResult.error?.message ?? 'Khong the tai trang thai poker.');
@@ -489,27 +498,60 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
   }, [actionInfo]);
 
   useEffect(() => {
-    void loadLobby();
-    const intervalId = window.setInterval(() => void loadLobby(), 10000);
-    return () => window.clearInterval(intervalId);
+    lobbySchedulerRef.current = createTaskScheduler(loadLobby, { minIntervalMs: 1000 });
+    lobbySchedulerRef.current.schedule(true);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      lobbySchedulerRef.current?.schedule();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      lobbySchedulerRef.current?.dispose();
+      lobbySchedulerRef.current = null;
+    };
   }, [loadLobby]);
 
   useEffect(() => {
     if (!selectedTableId || !sessionToken) {
       setTableState(null);
+      tableRealtimeConnectedRef.current = false;
+      lastTableRealtimeEventAtRef.current = 0;
       return;
     }
 
-    void loadTableState();
-    const intervalId = window.setInterval(() => void loadTableState(), 2000);
+    tableSchedulerRef.current = createTaskScheduler(loadTableState, { minIntervalMs: 700 });
+    tableSchedulerRef.current.schedule(true);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      const recentlyUpdatedFromRealtime = Date.now() - lastTableRealtimeEventAtRef.current < 7000;
+      if (tableRealtimeConnectedRef.current && recentlyUpdatedFromRealtime) {
+        return;
+      }
+
+      tableSchedulerRef.current?.schedule();
+    }, 8000);
 
     const channel = pokerService.createTableChannel(selectedTableId, () => {
-      void loadTableState();
+      lastTableRealtimeEventAtRef.current = Date.now();
+      tableSchedulerRef.current?.schedule(true);
+    }, (status) => {
+      tableRealtimeConnectedRef.current = status === 'SUBSCRIBED';
     });
 
     const heartBeatId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
       void tableService.heartbeat(sessionToken, selectedTableId);
-    }, 5000);
+    }, 12000);
 
     const handleBestEffortLeave = () => {
       void tableService.leaveTable(sessionToken, selectedTableId);
@@ -521,6 +563,10 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
     return () => {
       window.clearInterval(intervalId);
       window.clearInterval(heartBeatId);
+      tableSchedulerRef.current?.dispose();
+      tableSchedulerRef.current = null;
+      tableRealtimeConnectedRef.current = false;
+      lastTableRealtimeEventAtRef.current = 0;
       window.removeEventListener('pagehide', handleBestEffortLeave);
       window.removeEventListener('beforeunload', handleBestEffortLeave);
       if (supabase && channel) {
@@ -528,21 +574,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
       }
     };
   }, [loadTableState, selectedTableId, sessionToken]);
-
-  useEffect(() => {
-    if (!sessionToken) return;
-
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-
-      setTicking(true);
-      runTick().finally(() => setTicking(false));
-    }, 2500);
-
-    return () => window.clearInterval(intervalId);
-  }, [runTick, sessionToken]);
 
   const handleCreateTable = async () => {
     if (!sessionToken) {
@@ -569,7 +600,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
     setError(null);
     setActionError(null);
     setActionInfo('Tao ban thanh cong.');
-    await runTick();
     await Promise.all([loadLobby(), loadTableState()]);
   };
 
@@ -592,7 +622,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
     setError(null);
     setActionError(null);
     setActionInfo('Da vao ban.');
-    await runTick();
     await loadTableState();
   };
 
@@ -650,7 +679,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
     }
     setActionError(null);
     setActionInfo(ready ? 'Da ready.' : 'Da unready.');
-    await runTick();
     await loadTableState();
   };
 
@@ -719,7 +747,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
 
       setActionError(null);
       setActionInfo(`Action thanh cong: ${action.toUpperCase()}.`);
-      await runTick();
     } finally {
       await loadTableState();
     }
@@ -736,7 +763,6 @@ export function PokerPage({ profile, sessionToken, onSignInClick }: PokerPagePro
 
     setActionError(null);
     setActionInfo(`Da kick ${targetName ?? targetUserId.slice(0, 8)} khoi ban.`);
-    await runTick();
     await loadTableState();
   };
 

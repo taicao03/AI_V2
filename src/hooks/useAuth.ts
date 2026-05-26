@@ -2,10 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import type { UserProfile } from '../types';
 import { normalizeProfile, supabase, TABLES } from '../lib/supabaseClient';
 import { authService } from '../services/authService';
+import { rpcSingle, z } from '../core/supabaseApi';
 
-type AccountAuthRow = UserProfile & {
-  session_token: string;
-};
+const accountAuthSchema = z.object({
+  session_token: z.string().min(1),
+});
+
+const profileSchema = z.object({
+  uid: z.string().min(1),
+});
 
 function normalizeAccountName(value: string): string {
   return value.trim().toLowerCase();
@@ -59,23 +64,27 @@ export function useAuth() {
     setProfileLoading(true);
     setError(null);
 
-    const { data, error: profileError } = await client
-      .rpc('get_account_profile', {
+    const profileResult = await rpcSingle(
+      client,
+      'get_account_profile',
+      {
         p_session_token: token,
-      })
-      .single<UserProfile>();
+      },
+      profileSchema.passthrough(),
+      { missingConfigMessage: 'Chua cau hinh Supabase.' },
+    );
 
-    if (profileError) {
+    if (!profileResult.ok) {
       clearSessionToken();
       setSessionToken(null);
       setProfile(null);
-      setError(getFriendlyError(profileError.message));
+      setError(getFriendlyError(profileResult.error.message));
       setProfileLoading(false);
       return;
     }
 
     setSessionToken(token);
-    setProfile(normalizeProfile(data));
+    setProfile(normalizeProfile(profileResult.data as Partial<UserProfile>));
     setProfileLoading(false);
   }, []);
 
@@ -139,6 +148,9 @@ export function useAuth() {
       if (document.visibilityState !== 'visible') {
         return;
       }
+      if (!navigator.onLine) {
+        return;
+      }
 
       client
         .rpc('get_account_profile', {
@@ -152,7 +164,7 @@ export function useAuth() {
 
           setProfile(normalizeProfile(data));
         });
-    }, 15000);
+    }, 45000);
 
     return () => {
       mounted = false;
@@ -180,21 +192,24 @@ export function useAuth() {
       return false;
     }
 
-    const { data, error: signInError } = await client
-      .rpc('login_account', {
+    const signInResult = await rpcSingle(
+      client,
+      'login_account',
+      {
         p_account_name: normalizedAccountName,
         p_password: password,
-      })
-      .single<AccountAuthRow>();
+      },
+      accountAuthSchema.passthrough(),
+    );
 
-    if (signInError || !data) {
-      setError(getFriendlyError(signInError?.message ?? 'Khong the dang nhap.'));
+    if (!signInResult.ok) {
+      setError(getFriendlyError(signInResult.error.message ?? 'Khong the dang nhap.'));
       setActionLoading(false);
       return false;
     }
 
-    storeSessionToken(data.session_token);
-    await loadProfile(data.session_token);
+    storeSessionToken(signInResult.data.session_token);
+    await loadProfile(signInResult.data.session_token);
     setActionLoading(false);
     return true;
   }, [loadProfile]);
@@ -219,22 +234,25 @@ export function useAuth() {
       return false;
     }
 
-    const { data, error: signUpError } = await client
-      .rpc('register_account', {
+    const signUpResult = await rpcSingle(
+      client,
+      'register_account',
+      {
         p_account_name: normalizedAccountName,
         p_display_name: displayName.trim() || normalizedAccountName,
         p_password: password,
-      })
-      .single<AccountAuthRow>();
+      },
+      accountAuthSchema.passthrough(),
+    );
 
-    if (signUpError || !data) {
-      setError(getFriendlyError(signUpError?.message ?? 'Khong the tao tai khoan.'));
+    if (!signUpResult.ok) {
+      setError(getFriendlyError(signUpResult.error.message ?? 'Khong the tao tai khoan.'));
       setActionLoading(false);
       return false;
     }
 
-    storeSessionToken(data.session_token);
-    await loadProfile(data.session_token);
+    storeSessionToken(signUpResult.data.session_token);
+    await loadProfile(signUpResult.data.session_token);
     setActionLoading(false);
     return true;
   }, [loadProfile]);

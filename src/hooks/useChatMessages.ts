@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase, TABLES } from '../lib/supabaseClient';
 import { chatService, normalizeChatMessage } from '../services/chatService';
 import type { ChatMessage } from '../types';
+
+const QUERY_KEY = ['chat', 'messages'] as const;
 
 function sortMessages(messages: ChatMessage[]) {
   return [...messages]
@@ -9,31 +12,30 @@ function sortMessages(messages: ChatMessage[]) {
     .slice(-100);
 }
 
+async function fetchMessages() {
+  const { data, error } = await chatService.listMessages();
+  if (error) {
+    throw error;
+  }
+  return data;
+}
+
 export function useChatMessages() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: fetchMessages,
+    staleTime: 10_000,
+  });
 
-  const loadMessages = useCallback(async () => {
-    setLoading(true);
-    const { data, error: fetchError } = await chatService.listMessages();
-
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      setMessages(data);
-      setError(null);
-    }
-
-    setLoading(false);
-  }, []);
+  const reload = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+  }, [queryClient]);
 
   useEffect(() => {
     const client = supabase;
 
     if (!client) {
-      setLoading(false);
-      setError('Chua cau hinh Supabase chat.');
       return;
     }
 
@@ -45,19 +47,24 @@ export function useChatMessages() {
         }
 
         const nextMessage = normalizeChatMessage(payload.new as Partial<ChatMessage>);
-        setMessages((current) => {
-          const withoutDuplicate = current.filter((message) => message.message_id !== nextMessage.message_id);
+        queryClient.setQueryData<ChatMessage[]>(QUERY_KEY, (current) => {
+          const source = current ?? [];
+          const withoutDuplicate = source.filter((message) => message.message_id !== nextMessage.message_id);
           return sortMessages([...withoutDuplicate, nextMessage]);
         });
       })
       .subscribe();
 
-    void loadMessages();
-
     return () => {
       void client.removeChannel(channel);
     };
-  }, [loadMessages]);
+  }, [queryClient]);
 
-  return { messages, loading, error, reload: loadMessages };
+  return {
+    messages: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    reload,
+  };
 }
+

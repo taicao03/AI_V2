@@ -218,11 +218,6 @@ export function useRussianRouletteRoom({ sessionToken, userId }: UseRussianRoule
       }
 
       setError(null);
-      const tickResult = await russianRouletteService.tickRooms(sessionToken);
-      if (tickResult.error) {
-        setError(tickResult.error.message);
-      }
-
       setInfo(isReady ? 'Da ready.' : 'Da unready.');
       await loadRoomState();
       return true;
@@ -275,7 +270,12 @@ export function useRussianRouletteRoom({ sessionToken, userId }: UseRussianRoule
 
   useEffect(() => {
     void loadLobby();
-    const lobbyIntervalId = window.setInterval(() => void loadLobby(), 10000);
+    const lobbyIntervalId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      void loadLobby();
+    }, 15000);
     return () => window.clearInterval(lobbyIntervalId);
   }, [loadLobby]);
 
@@ -293,27 +293,7 @@ export function useRussianRouletteRoom({ sessionToken, userId }: UseRussianRoule
       }
 
       scheduleRoomRefresh();
-    }, 3500);
-
-    const tickIntervalId = window.setInterval(() => {
-      if (!active || document.visibilityState !== 'visible') {
-        return;
-      }
-
-      void russianRouletteService.tickRooms(sessionToken).then((result) => {
-        if (result.error) {
-          setError(result.error.message);
-        }
-      });
-    }, 4500);
-
-    const cleanupIntervalId = window.setInterval(() => {
-      if (!active || document.visibilityState !== 'visible') {
-        return;
-      }
-
-      void russianRouletteService.cleanupInactiveRooms(sessionToken);
-    }, 45000);
+    }, 8000);
 
     const channel = russianRouletteService.createRoomChannel(selectedRoomId, () => {
       if (!active) {
@@ -326,8 +306,6 @@ export function useRussianRouletteRoom({ sessionToken, userId }: UseRussianRoule
     return () => {
       active = false;
       window.clearInterval(pullIntervalId);
-      window.clearInterval(tickIntervalId);
-      window.clearInterval(cleanupIntervalId);
       if (roomRefreshTimerRef.current !== null) {
         window.clearTimeout(roomRefreshTimerRef.current);
         roomRefreshTimerRef.current = null;
@@ -337,38 +315,6 @@ export function useRussianRouletteRoom({ sessionToken, userId }: UseRussianRoule
       }
     };
   }, [scheduleRoomRefresh, selectedRoomId, sessionToken]);
-
-  useEffect(() => {
-    if (!roomState || !sessionToken || roomState.room.status !== 'countdown') {
-      return;
-    }
-
-    const endsAt = roomState.room.countdown_ends_at ? new Date(roomState.room.countdown_ends_at).getTime() : 0;
-    if (endsAt <= 0) {
-      return;
-    }
-
-    const msLeft = endsAt - Date.now();
-    if (msLeft > 1200) {
-      return;
-    }
-
-    let cancelled = false;
-    const nudge = async () => {
-      const tickResult = await russianRouletteService.tickRooms(sessionToken);
-      if (!cancelled && tickResult.error) {
-        setError(tickResult.error.message);
-      }
-      if (!cancelled) {
-        scheduleRoomRefresh(true);
-      }
-    };
-
-    void nudge();
-    return () => {
-      cancelled = true;
-    };
-  }, [roomState, scheduleRoomRefresh, sessionToken]);
 
   useEffect(() => {
     if (!info) {

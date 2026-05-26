@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { wheelSpinService } from '../services/wheelSpinService';
 import type { WheelChatMessage, WheelJackpotInfo, WheelLeaderboardEntry, WheelPublicState, WheelSpin } from '../types/wheel';
+import { createTaskScheduler, type TaskScheduler } from '../core/scheduler';
 
 type UseWheelSpinProps = {
   sessionToken: string | null;
@@ -53,7 +54,7 @@ export function useWheelSpin({ sessionToken, userId }: UseWheelSpinProps) {
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
   const queuedReloadRef = useRef(false);
-  const realtimeReloadTimerRef = useRef<number | null>(null);
+  const realtimeReloadSchedulerRef = useRef<TaskScheduler | null>(null);
   const signaturesRef = useRef({
     publicState: '',
     recentSpins: '',
@@ -200,30 +201,24 @@ export function useWheelSpin({ sessionToken, userId }: UseWheelSpinProps) {
       return;
     }
 
-    if (realtimeReloadTimerRef.current !== null) {
-      window.clearTimeout(realtimeReloadTimerRef.current);
-    }
-
-    realtimeReloadTimerRef.current = window.setTimeout(() => {
-      realtimeReloadTimerRef.current = null;
-      void loadAll();
-    }, 700);
-  }, [loadAll]);
+    realtimeReloadSchedulerRef.current?.schedule();
+  }, []);
 
   useEffect(() => {
+    realtimeReloadSchedulerRef.current = createTaskScheduler(loadAll, { minIntervalMs: 700 });
     void loadAll();
+
     const intervalId = window.setInterval(() => {
       if (document.visibilityState !== 'visible') {
         return;
       }
-      void loadAll();
+      realtimeReloadSchedulerRef.current?.schedule();
     }, 8000);
 
     return () => {
       window.clearInterval(intervalId);
-      if (realtimeReloadTimerRef.current !== null) {
-        window.clearTimeout(realtimeReloadTimerRef.current);
-      }
+      realtimeReloadSchedulerRef.current?.dispose();
+      realtimeReloadSchedulerRef.current = null;
     };
   }, [loadAll]);
 

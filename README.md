@@ -35,6 +35,11 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-or-publishable-key
 
 Sau do chay full SQL trong [supabase/schema.sql](./supabase/schema.sql) theo huong dan [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
 Neu bat Poker, chay them [supabase/poker_patch.sql](./supabase/poker_patch.sql) sau `schema.sql`.
+De chay game tick tren server (khong phu thuoc client), chay them [supabase/server_tick_scheduler_patch.sql](./supabase/server_tick_scheduler_patch.sql).
+De bat mini game Ai La Trieu Phu, chay them [supabase/millionaire_patch.sql](./supabase/millionaire_patch.sql).
+Tai lieu setup AI question bank cho game nay: [MILLIONAIRE_AI_SETUP.md](./MILLIONAIRE_AI_SETUP.md).
+`millionaire_patch.sql` cung bao gom RPC cho tab admin quan ly question bank/session.
+Neu can them nhieu cau hoi AI seed san, chay them [supabase/millionaire_ai_seed_batch_01.sql](./supabase/millionaire_ai_seed_batch_01.sql).
 
 ## Pages
 

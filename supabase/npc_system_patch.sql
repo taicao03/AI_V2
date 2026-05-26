@@ -24,12 +24,19 @@ create table if not exists public.npc_wheel_rounds (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.npc_horse_rounds (
+  race_id uuid primary key,
+  bets_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 alter table public.npc_profiles add column if not exists last_global_chat_text text;
 alter table public.npc_profiles add column if not exists last_poker_chat_text text;
 alter table public.npc_profiles add column if not exists last_rr_chat_text text;
 
 create index if not exists npc_profiles_enabled_idx on public.npc_profiles (is_enabled, npc_tier);
 create index if not exists npc_wheel_rounds_created_idx on public.npc_wheel_rounds (created_at desc);
+create index if not exists npc_horse_rounds_created_idx on public.npc_horse_rounds (created_at desc);
 
 create or replace function public.npc_set_updated_at()
 returns trigger
@@ -862,6 +869,146 @@ begin
 end;
 $$;
 
+create or replace function public.npc_tick_horse()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  settings_record public.horse_race_settings%rowtype;
+  active_race public.horse_races%rowtype;
+  npc record;
+  picked_horse_id uuid;
+  target_count integer;
+  bet_amount integer;
+  available_points integer;
+  ratio numeric;
+  placed_count integer := 0;
+begin
+  if to_regclass('public.horse_race_settings') is null
+    or to_regclass('public.horses') is null
+    or to_regclass('public.horse_races') is null
+    or to_regclass('public.horse_bets') is null
+    or to_regclass('public.npc_horse_rounds') is null
+    or to_regprocedure('public.horse_place_bet(text,uuid,integer)') is null then
+    return 0;
+  end if;
+
+  begin
+    perform public.horse_tick_rounds();
+  exception when others then
+    null;
+  end;
+
+  select *
+  into settings_record
+  from public.horse_race_settings
+  where settings_id = 1;
+
+  if not found or not settings_record.enabled then
+    return 0;
+  end if;
+
+  select *
+  into active_race
+  from public.horse_races
+  where status = 'betting'
+  order by created_at desc
+  limit 1;
+
+  if not found or now() >= active_race.betting_ends_at then
+    return 0;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('npc_tick_horse_v1'));
+
+  insert into public.npc_horse_rounds (race_id)
+  values (active_race.race_id)
+  on conflict (race_id) do nothing;
+
+  if not found then
+    return 0;
+  end if;
+
+  target_count := 8 + floor(random() * 15)::integer;
+
+  for npc in
+    select np.user_id, np.bot_session_token, np.npc_tier, u.points, u.locked_points
+    from public.npc_profiles np
+    join public.users u on u.uid = np.user_id
+    where np.is_enabled = true
+      and np.bot_session_token is not null
+      and u.is_banned = false
+    order by case when np.npc_tier = 'whale' then 0 else 1 end, random()
+    limit target_count
+  loop
+    available_points := greatest(0, npc.points - npc.locked_points);
+    if available_points < settings_record.min_bet then
+      continue;
+    end if;
+
+    if npc.npc_tier = 'whale' then
+      ratio := 0.02 + (random() * 0.05);
+    else
+      ratio := 0.006 + (random() * 0.018);
+    end if;
+
+    bet_amount := floor(available_points * ratio)::integer;
+    bet_amount := greatest(settings_record.min_bet, bet_amount);
+    bet_amount := least(settings_record.max_bet, bet_amount);
+
+    if bet_amount > available_points then
+      bet_amount := available_points;
+    end if;
+
+    if bet_amount < settings_record.min_bet then
+      continue;
+    end if;
+
+    select t.horse_id
+    into picked_horse_id
+    from (
+      select
+        (h.value->>'horse_id')::uuid as horse_id,
+        greatest(coalesce((h.value->>'win_probability')::numeric, 0), 0) as win_probability
+      from jsonb_array_elements(active_race.horses_snapshot) h
+    ) t
+    order by (random() * greatest(t.win_probability, 1)) desc
+    limit 1;
+
+    if picked_horse_id is null then
+      continue;
+    end if;
+
+    begin
+      perform public.horse_place_bet(
+        npc.bot_session_token,
+        picked_horse_id,
+        bet_amount
+      );
+      placed_count := placed_count + 1;
+    exception when others then
+      null;
+    end;
+  end loop;
+
+  update public.npc_horse_rounds
+  set bets_count = placed_count
+  where race_id = active_race.race_id;
+
+  delete from public.npc_horse_rounds stale
+  where stale.race_id in (
+    select old_round.race_id
+    from public.npc_horse_rounds old_round
+    order by old_round.created_at desc, old_round.race_id desc
+    offset 500
+  );
+
+  return placed_count;
+end;
+$$;
+
 create or replace function public.npc_tick_system(p_session_token text default null)
 returns jsonb
 language plpgsql
@@ -874,9 +1021,11 @@ declare
   created_npcs integer;
   dice_bets integer := 0;
   wheel_spins integer := 0;
+  horse_bets integer := 0;
   poker_chats integer := 0;
   rr_chats integer := 0;
   wheel_ready boolean := false;
+  horse_ready boolean := false;
   rr_ready boolean := false;
   rr_error text := null;
 begin
@@ -916,6 +1065,23 @@ begin
     rr_error := coalesce(rr_error || ' | ', '') || 'wheel:not_ready';
   end if;
 
+  horse_ready := to_regclass('public.horse_race_settings') is not null
+    and to_regclass('public.horses') is not null
+    and to_regclass('public.horse_races') is not null
+    and to_regclass('public.horse_bets') is not null
+    and to_regprocedure('public.horse_place_bet(text,uuid,integer)') is not null
+    and to_regprocedure('public.horse_tick_rounds()') is not null;
+
+  if horse_ready then
+    begin
+      horse_bets := public.npc_tick_horse();
+    exception when others then
+      rr_error := coalesce(rr_error || ' | ', '') || 'horse:' || sqlerrm;
+    end;
+  else
+    rr_error := coalesce(rr_error || ' | ', '') || 'horse:not_ready';
+  end if;
+
   begin
     poker_chats := public.npc_tick_poker();
   exception when others then
@@ -944,9 +1110,11 @@ begin
     'created_npcs', created_npcs,
     'dice_bets', dice_bets,
     'wheel_spins', wheel_spins,
+    'horse_bets', horse_bets,
     'poker_chats', poker_chats,
     'rr_chats', rr_chats,
     'wheel_ready', wheel_ready,
+    'horse_ready', horse_ready,
     'rr_ready', rr_ready,
     'error', rr_error,
     'tick_at', now()
@@ -956,9 +1124,11 @@ $$;
 
 revoke all on public.npc_profiles from anon, authenticated;
 revoke all on public.npc_wheel_rounds from anon, authenticated;
+revoke all on public.npc_horse_rounds from anon, authenticated;
 revoke all on function public.npc_ensure_accounts() from public, anon, authenticated;
 revoke all on function public.npc_tick_dice() from public, anon, authenticated;
 revoke all on function public.npc_tick_wheel() from public, anon, authenticated;
+revoke all on function public.npc_tick_horse() from public, anon, authenticated;
 revoke all on function public.npc_tick_poker() from public, anon, authenticated;
 revoke all on function public.npc_tick_rr() from public, anon, authenticated;
 revoke all on function public.npc_tick_system(text) from public, anon, authenticated;

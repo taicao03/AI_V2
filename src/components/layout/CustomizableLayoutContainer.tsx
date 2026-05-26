@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react';
+import { logger } from '../../core/logger';
 
 export type WidgetSize = 'sm' | 'md' | 'lg' | 'xl'; // sm: 33%, md: 50%, lg: 66%, xl: 100%
 
@@ -88,7 +89,7 @@ export function CustomizableLayoutContainer({
         }
         return;
       } catch (e) {
-        console.error("Failed to parse layout from localStorage, using default", e);
+        logger.error('Failed to parse layout from localStorage, using default', e);
       }
     }
 

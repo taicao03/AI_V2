@@ -42,6 +42,17 @@ export const TABLES = {
   wheelSpins: 'wheel_spins',
   wheelChatMessages: 'wheel_chat_messages',
   wheelPlayerStats: 'wheel_player_stats',
+  horseRaces: 'horse_races',
+  horses: 'horses',
+  horseBets: 'horse_bets',
+  horseRaceSettings: 'horse_race_settings',
+  horseChatMessages: 'horse_chat_messages',
+  horsePlayerStats: 'horse_player_stats',
+  millionaireQuestionBank: 'millionaire_question_bank',
+  millionaireSessions: 'millionaire_sessions',
+  millionaireSessionQuestions: 'millionaire_session_questions',
+  millionaireAnswers: 'millionaire_answers',
+  millionairePointsAudit: 'millionaire_points_audit',
 } as const;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;

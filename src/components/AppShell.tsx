@@ -1,4 +1,4 @@
-import { ShieldCheck, Home, MessageSquare, ShieldAlert, Crown, Target, Sparkles } from 'lucide-react';
+import { ShieldCheck, Home, MessageSquare, ShieldAlert, Crown, Target, Sparkles, Flag, Brain } from 'lucide-react';
 import { HeaderWinTicker, type HeaderWinAlert } from './HeaderWinTicker';
 import { NotificationCenter, type NotificationItem } from './NotificationCenter';
 import { UserHeader } from './UserHeader';
@@ -83,6 +83,8 @@ export function AppShell({
               <NavButton icon={<Crown size={18} />} label="Poker" onClick={() => onNavigate('/poker')} active={isActivePath('/poker')} />
               <NavButton icon={<Target size={18} />} label="Roulette" onClick={() => onNavigate('/games/russian-roulette')} active={isActivePath('/games/russian-roulette')} />
               <NavButton icon={<Sparkles size={18} />} label="Wheel" onClick={() => onNavigate('/games/wheel-spin')} active={isActivePath('/games/wheel-spin')} />
+              <NavButton icon={<Flag size={18} />} label="Horse" onClick={() => onNavigate('/games/horse-racing')} active={isActivePath('/games/horse-racing')} />
+              <NavButton icon={<Brain size={18} />} label="Millionaire" onClick={() => onNavigate('/games/millionaire')} active={isActivePath('/games/millionaire')} />
               <NavButton icon={<MessageSquare size={18} />} label="Comms" onClick={() => onNavigate('/chat')} active={isActivePath('/chat')} />
               {profile?.role === 'admin' && (
                 <NavButton icon={<ShieldAlert size={18} />} label="Control" onClick={() => onNavigate('/admin')} active={isActivePath('/admin')} />
@@ -103,6 +105,8 @@ export function AppShell({
         <MobileNavButton icon={<Crown size={18} />} label="Poker" onClick={() => onNavigate('/poker')} active={isActivePath('/poker')} />
         <MobileNavButton icon={<Target size={18} />} label="Roulette" onClick={() => onNavigate('/games/russian-roulette')} active={isActivePath('/games/russian-roulette')} />
         <MobileNavButton icon={<Sparkles size={18} />} label="Wheel" onClick={() => onNavigate('/games/wheel-spin')} active={isActivePath('/games/wheel-spin')} />
+        <MobileNavButton icon={<Flag size={18} />} label="Horse" onClick={() => onNavigate('/games/horse-racing')} active={isActivePath('/games/horse-racing')} />
+        <MobileNavButton icon={<Brain size={18} />} label="Quiz" onClick={() => onNavigate('/games/millionaire')} active={isActivePath('/games/millionaire')} />
         <MobileNavButton icon={<MessageSquare size={18} />} label="Comms" onClick={() => onNavigate('/chat')} active={isActivePath('/chat')} />
         {profile?.role === 'admin' && (
           <MobileNavButton icon={<ShieldAlert size={18} />} label="Control" onClick={() => onNavigate('/admin')} active={isActivePath('/admin')} />

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LeaderboardUser } from '../types';
 import { normalizeLeaderboardUser, supabase, TABLES } from '../lib/supabaseClient';
+import { createTaskScheduler } from '../core/scheduler';
 
 const LIMIT = 10;
+const QUERY_KEY = ['leaderboard', LIMIT] as const;
 
 function sortLeaderboard(users: LeaderboardUser[]): LeaderboardUser[] {
   return [...users]
@@ -16,66 +19,72 @@ function sortLeaderboard(users: LeaderboardUser[]): LeaderboardUser[] {
     .slice(0, LIMIT);
 }
 
+async function fetchLeaderboard(): Promise<LeaderboardUser[]> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Chua cau hinh Supabase leaderboard.');
+  }
+
+  const { data, error } = await client
+    .from(TABLES.leaderboard)
+    .select('uid, account_name, display_name, avatar_url, vip_level, points, locked_points, updated_at')
+    .order('points', { ascending: false })
+    .order('updated_at', { ascending: true, nullsFirst: false })
+    .limit(LIMIT);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return sortLeaderboard((data ?? []).map((row) => normalizeLeaderboardUser(row)));
+}
+
 export function useLeaderboard() {
-  const [leaders, setLeaders] = useState<LeaderboardUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const channelNameRef = useRef(
     `dice-users-leaderboard-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)}`,
   );
+  const schedulerRef = useRef<ReturnType<typeof createTaskScheduler> | null>(null);
 
-  const loadLeaderboard = useCallback(async () => {
-    const client = supabase;
-
-    if (!client) {
-      setLoading(false);
-      setError('Chua cau hinh Supabase leaderboard.');
-      return;
-    }
-
-    const { data, error: fetchError } = await client
-      .from(TABLES.leaderboard)
-      .select('uid, account_name, display_name, avatar_url, vip_level, points, locked_points, updated_at')
-      .order('points', { ascending: false })
-      .order('updated_at', { ascending: true, nullsFirst: false })
-      .limit(LIMIT);
-
-    if (fetchError) {
-      setError(fetchError.message);
-      setLoading(false);
-      return;
-    }
-
-    setLeaders(sortLeaderboard((data ?? []).map((row) => normalizeLeaderboardUser(row))));
-    setLoading(false);
-  }, []);
+  const query = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: fetchLeaderboard,
+    staleTime: 10_000,
+  });
 
   useEffect(() => {
     const client = supabase;
 
     if (!client) {
-      setLoading(false);
-      setError('Chua cau hinh Supabase leaderboard.');
       return;
     }
+
+    schedulerRef.current = createTaskScheduler(
+      async () => {
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      },
+      { minIntervalMs: 900 },
+    );
 
     const channel = client
       .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: TABLES.leaderboard }, () => {
-        void loadLeaderboard();
+        schedulerRef.current?.schedule();
       })
       .subscribe();
 
-    void loadLeaderboard();
-
     return () => {
+      schedulerRef.current?.dispose();
+      schedulerRef.current = null;
       void client.removeChannel(channel);
     };
-  }, [loadLeaderboard]);
+  }, [queryClient]);
 
   return {
-    leaders,
-    loading,
-    error,
+    leaders: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
   };
 }
+

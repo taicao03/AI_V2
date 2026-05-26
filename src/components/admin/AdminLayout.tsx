@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   LayoutDashboard,
   Sparkles,
+  Flag,
+  Brain,
 } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
@@ -29,6 +31,8 @@ const TABS = [
   { id: 'poker', label: 'Poker', icon: <Crown size={18} /> },
   { id: 'russian-roulette', label: 'Russian Roulette', icon: <ShieldCheck size={18} /> },
   { id: 'wheel-spin', label: 'Wheel Spin', icon: <Sparkles size={18} /> },
+  { id: 'horse-racing', label: 'Horse Racing', icon: <Flag size={18} /> },
+  { id: 'millionaire', label: 'Millionaire', icon: <Brain size={18} /> },
   { id: 'chat', label: 'Chat Moderation', icon: <MessageSquare size={18} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
 ] as const;

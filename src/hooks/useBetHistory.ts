@@ -59,6 +59,12 @@ export function useBetHistory() {
   const liteRefreshQueuedRef = useRef(false);
   const liteRefreshTimeoutRef = useRef<number | null>(null);
   const lastLiteRefreshAtRef = useRef(0);
+  const lastPeriodicSyncAtRef = useRef(0);
+  const connectedRef = useRef(false);
+
+  useEffect(() => {
+    connectedRef.current = connected;
+  }, [connected]);
 
   const loadCurrentRound = useCallback(async () => {
     const { data, error: roundError } = await getCurrentRound();
@@ -297,8 +303,14 @@ export function useBetHistory() {
       if (!mounted || document.visibilityState !== 'visible') {
         return;
       }
+
+      if (connectedRef.current && Date.now() - lastPeriodicSyncAtRef.current < 60000) {
+        return;
+      }
+
+      lastPeriodicSyncAtRef.current = Date.now();
       scheduleRefresh();
-    }, 6000);
+    }, 12000);
 
     return () => {
       mounted = false;
